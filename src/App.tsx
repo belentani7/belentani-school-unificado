@@ -225,7 +225,7 @@ export default function App() {
         {currentTab === 'parental' && (
           <ParentalShield
             settings={parentalSettings}
-            onUpdateSettings={setParentalSettings}
+            onUpdateSettings={(partial) => setParentalSettings((prev) => ({ ...prev, ...partial }))}
           />
         )}
         {currentTab === 'jsonBank' && <JsonBankExplorer />}
