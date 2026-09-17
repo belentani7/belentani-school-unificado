@@ -1,0 +1,81 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // User must be authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // User is accessing their own document
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Identity and privilege fields cannot be self-assigned or mutated.
+    function identityLocked() {
+      return (!('uid' in request.resource.data) || request.resource.data.uid == request.auth.uid)
+          && (!('role' in request.resource.data) || request.resource.data.role == 'student');
+    }
+
+    // User profile document
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && identityLocked();
+      allow update: if isOwner(userId) && identityLocked();
+      allow delete: if false;
+
+      // Subcollections under the user
+      match /progress/{progressId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      match /chats/{chatId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // Written by AITutorChat.tsx
+      match /chatLogs/{chatLogId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      match /transcriptions/{transcriptionId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      match /creations/{creationId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      match /completed_days/{dayId} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+
+    // Student profile + academic data (src/services/schoolFirestore.ts)
+    match /students/{studentId} {
+      allow read, write: if isOwner(studentId);
+
+      match /progress/{progressId} {
+        allow read, write: if isOwner(studentId);
+      }
+
+      match /solutions/{solutionId} {
+        allow read, write: if isOwner(studentId);
+      }
+
+      match /creations/{creationId} {
+        allow read, write: if isOwner(studentId);
+      }
+
+      match /chats/{chatId} {
+        allow read, write: if isOwner(studentId);
+      }
+    }
+
+    // Connection test document — authenticated only
+    match /test/connection {
+      allow read: if isAuthenticated();
+    }
+  }
+}
